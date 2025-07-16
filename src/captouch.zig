@@ -29,6 +29,7 @@ pub const Captouch = @This();
 file: File,
 handle: Handle,
 
+// Initialize handle to the device to write and read instructions from/to.
 pub fn init() !Captouch {
     const f: File = try std.fs.openFileAbsolute(DEVICE, .{ .mode = .read_write });
     // Set I2C address
@@ -36,18 +37,24 @@ pub fn init() !Captouch {
         return error.IoctlFailed;
 
     const touch = Captouch{ .file = f, .handle = f.handle };
-    // Reset relevant controls
-    try touch.disableLeds();
-    try touch.direct();
-    try touch.resetInput();
-
+    try touch.reset();
     return touch;
 }
 
+// Reset controls and close file
 pub fn deinit(this: Captouch) void {
+    this.reset();
     this.file.close();
 }
 
+// Reset all relevant controls for this module
+pub fn reset(this: Captouch) void {
+    try this.disableLeds();
+    try this.direct();
+    try this.resetInput();
+}
+
+// Check if any key is pressed
 pub fn anyPressed(this: Captouch) !bool {
     // Write register address to read
     if (std.os.linux.write(this.handle, &[_]u8{R_INPUT_STATUS}, 1) != 1)
@@ -59,6 +66,7 @@ pub fn anyPressed(this: Captouch) !bool {
     return readBuf[0] > 0;
 }
 
+// Set all LEDs to breathing
 pub fn breath(this: Captouch) !void {
     // Set 'breath' behaviour for all LEDs 1-4
     try this.writeRegister(R_LED_BEHAVIOUR_1, ALL_ONES);
@@ -66,12 +74,15 @@ pub fn breath(this: Captouch) !void {
     try this.writeRegister(R_LED_BEHAVIOUR_2, ALL_ONES);
 }
 
+// Set all LEDs to constant
 pub fn direct(this: Captouch) !void {
     // Set behaviour for all LEDs 1-4 to constant
     try this.writeRegister(R_LED_BEHAVIOUR_1, ALL_ZEROES);
     // Set behaviour for all LEDs 5-8 to constant
     try this.writeRegister(R_LED_BEHAVIOUR_2, ALL_ZEROES);
 }
+
+// Set behaviour per LED
 pub fn setLedBehaviour(this: Captouch, i: u4, behaviour: u8) !void {
     // Example: set LED 3 to breathing: R_LED_BEHAVIOUR_1 := 0b00110000
     const j: u3 = @intCast((2 * i) % 8);
@@ -80,18 +91,22 @@ pub fn setLedBehaviour(this: Captouch, i: u4, behaviour: u8) !void {
     try this.writeRegister(R_LED_BEHAVIOUR_1 + ledGroup, shifted);
 }
 
+// Enable all LEDs
 pub fn enableLeds(this: Captouch) !void {
     try this.writeRegister(R_LED_OUTPUT_CON, ALL_ONES);
 }
 
+// Disable all LEDs
 pub fn disableLeds(this: Captouch) !void {
     try this.writeRegister(R_LED_OUTPUT_CON, ALL_ZEROES);
 }
 
+// Reset all touch button input
 pub fn resetInput(this: Captouch) !void {
     try this.writeRegister(R_MAIN_CONTROL, ALL_ZEROES);
 }
 
+// Write given value to given register
 fn writeRegister(this: Captouch, register: u8, val: u8) !void {
     if (std.os.linux.write(this.handle, &[_]u8{ register, val }, 2) != 2)
         return error.WriteFailed;
