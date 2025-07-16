@@ -41,14 +41,13 @@ pub fn init() !Captouch {
     return touch;
 }
 
-// Reset controls and close file
+// Close file
 pub fn deinit(this: Captouch) void {
-    this.reset();
     this.file.close();
 }
 
 // Reset all relevant controls for this module
-pub fn reset(this: Captouch) void {
+pub fn reset(this: Captouch) !void {
     try this.disableLeds();
     try this.direct();
     try this.resetInput();
@@ -87,7 +86,7 @@ pub fn setLedBehaviour(this: Captouch, i: u4, behaviour: u8) !void {
     // Example: set LED 3 to breathing: R_LED_BEHAVIOUR_1 := 0b00110000
     const j: u3 = @intCast((2 * i) % 8);
     const shifted: u8 = behaviour << j;
-    const ledGroup: u2 = i / 4;
+    const ledGroup: u8 = i / 4; // Group 1-4 or 5-8
     try this.writeRegister(R_LED_BEHAVIOUR_1 + ledGroup, shifted);
 }
 
