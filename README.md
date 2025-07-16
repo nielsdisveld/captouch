@@ -1,6 +1,4 @@
-# Project Title
-
-Zig library for the captouch microchips: CAP1xxx ICs (very much WIP)
+# Zig library for the captouch microchips: CAP1xxx ICs (very much WIP)
 
 ## Description
 
